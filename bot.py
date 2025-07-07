@@ -270,61 +270,47 @@ async def cmd_status(message: Message):
 # ======== NEWSESSION (ochiq) ========
 @dp.message(Command('newsession'))
 async def cmd_newsession(message: Message, state: FSMContext):
-    await message.answer(
-        "📌 Yangi session nomini kiriting.\n"
-        "Masalan: user1"
-    )
+    await message.answer("📌 Yangi session uchun nom kiriting (masalan: user1):")
     await state.set_state(AddSession.waiting_for_name)
-
 
 @dp.message(AddSession.waiting_for_name)
 async def process_name(message: Message, state: FSMContext):
     name = message.text.strip()
-
     if not name:
-        return await message.answer("❗ Nom bo'sh bo'lmasligi kerak.")
-
-    # session fayl mavjud emasligini tekshir
-    session_file = os.path.join(SESSIONS_DIR, f"{name}.session")
-    if os.path.exists(session_file):
-        return await message.answer("❗ Bu nomdagi session allaqachon mavjud. Boshqa nom tanlang.")
-
+        return await message.answer("❗ Nom bo'sh bo'lmasin.")
     await state.update_data(name=name)
-    await message.answer(
-        "📱 Telefon raqamingizni kiriting.\n"
-        "Masalan: +998901234567"
-    )
+    await message.answer("📱 Telefon raqamingizni kiriting (masalan: +998901234567):")
     await state.set_state(AddSession.waiting_for_phone)
-
 
 @dp.message(AddSession.waiting_for_phone)
 async def process_phone(message: Message, state: FSMContext):
     phone = message.text.strip()
-
     if not phone.startswith('+') or len(phone) < 8:
         return await message.answer("❗ Telefon raqam + bilan va to'g'ri formatda bo'lishi kerak.")
-
+    
     await state.update_data(phone=phone)
-    data = await state.get_data()
 
+    data = await state.get_data()
     name = data['name']
     session_file = os.path.join(SESSIONS_DIR, f"{name}.session")
-    client = TelegramClient(session_file, TELETHON_API_ID, TELETHON_API_HASH)
 
+    client = TelegramClient(session_file, TELETHON_API_ID, TELETHON_API_HASH)
     await client.connect()
+
     try:
         sent = await client.send_code_request(phone)
         await client.disconnect()
 
-        await state.update_data(sent=sent)
-        await message.answer("✅ Kod yuborildi.\nSMSdagi kodni kiriting:")
+        # phone_code_hash ni alohida saqlaymiz
+        await state.update_data(phone_code_hash=sent.phone_code_hash)
+
+        await message.answer("✅ Kod yuborildi.\nSMSdan kodni kiriting:")
         await state.set_state(AddSession.waiting_for_code)
 
     except Exception as e:
         await client.disconnect()
         await message.answer(f"❌ Xato: {e}")
         await state.clear()
-
 
 @dp.message(AddSession.waiting_for_code)
 async def process_code(message: Message, state: FSMContext):
@@ -333,15 +319,20 @@ async def process_code(message: Message, state: FSMContext):
 
     name = data['name']
     phone = data['phone']
+    phone_code_hash = data.get('phone_code_hash')
+
+    if not phone_code_hash:
+        await message.answer("❌ phone_code_hash yo'q. /newsession dan qayta boshlang.")
+        return await state.clear()
+
     session_file = os.path.join(SESSIONS_DIR, f"{name}.session")
     client = TelegramClient(session_file, TELETHON_API_ID, TELETHON_API_HASH)
-
     await client.connect()
+
     try:
-        await client.sign_in(phone, code)
+        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
         await client.disconnect()
 
-        # Sessionni bazaga qo'shish
         add_session(name, {
             'phone_number': phone,
             'group_name': '',
@@ -358,14 +349,13 @@ async def process_code(message: Message, state: FSMContext):
     except SessionPasswordNeededError:
         await client.disconnect()
         await state.update_data(code=code)
-        await message.answer("🔐 2FA parol kerak.\nIltimos, Telegram hisobingizdagi ikki bosqichli parolni kiriting:")
+        await message.answer("🔐 2FA parol kerak. Iltimos, Telegram hisobingizdagi ikki bosqichli parolni kiriting:")
         await state.set_state(AddSession.waiting_for_password)
 
     except Exception as e:
         await client.disconnect()
         await message.answer(f"❌ Kod noto'g'ri yoki boshqa xato:\n{e}")
         await state.clear()
-
 
 @dp.message(AddSession.waiting_for_password)
 async def process_password(message: Message, state: FSMContext):
@@ -375,15 +365,20 @@ async def process_password(message: Message, state: FSMContext):
     name = data['name']
     phone = data['phone']
     code = data['code']
+    phone_code_hash = data.get('phone_code_hash')
+
+    if not phone_code_hash:
+        await message.answer("❌ phone_code_hash yo'q. /newsession dan qayta boshlang.")
+        return await state.clear()
+
     session_file = os.path.join(SESSIONS_DIR, f"{name}.session")
     client = TelegramClient(session_file, TELETHON_API_ID, TELETHON_API_HASH)
-
     await client.connect()
+
     try:
-        await client.sign_in(phone, code, password=password)
+        await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash, password=password)
         await client.disconnect()
 
-        # Bazaga yozish
         add_session(name, {
             'phone_number': phone,
             'group_name': '',
@@ -399,7 +394,7 @@ async def process_password(message: Message, state: FSMContext):
 
     except Exception as e:
         await client.disconnect()
-        await message.answer(f"❌ 2FA parolda xato yoki boshqa xato:\n{e}")
+        await message.answer(f"❌ Parol xato yoki boshqa xato:\n{e}")
         await state.clear()
 
 
