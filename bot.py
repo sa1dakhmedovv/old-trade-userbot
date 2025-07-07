@@ -10,7 +10,7 @@ from aiogram.dispatcher.filters.state import State, StatesGroup
 from telethon import TelegramClient
 from controller import UserbotController
 
-API_TOKEN = '8118013065:AAGqMUxWDfbecNerjLuPcexWRD6tH7a-Ejc'
+API_TOKEN = '8008249494:AAF3BM3RVpMbm-whf0Vvc8lwGyrKd8z1DTA'
 API_ID = 28369489
 API_HASH = '369653d4ba4277f81d109368af59f82f'
 
