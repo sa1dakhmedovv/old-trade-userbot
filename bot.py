@@ -13,9 +13,9 @@ from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError
 
 # ======== CONFIG ========
-API_TOKEN = '0c4742a519fe33ea6b63c2473fb71429'
+API_TOKEN = '8008249494:AAF3BM3RVpMbm-whf0Vvc8lwGyrKd8z1DTA'
 API_ID = 26585593
-API_HASH = '8008249494:AAF3BM3RVpMbm-whf0Vvc8lwGyrKd8z1DTA'
+API_HASH = '0c4742a519fe33ea6b63c2473fb71429'
 ADMIN_ID = 7753090895
 
 SESSIONS_DIR = 'sessions'
