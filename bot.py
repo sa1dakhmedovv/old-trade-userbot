@@ -267,9 +267,103 @@ async def cmd_status(message: Message):
         text += f"\n✅ {k}: {v['status']}"
     await message.answer(text)
 
-# ======== NEWSESSION (ochiq) ========
-# bu yerda avvalgi newsession FSM kodingni qo'yasan
-# (shu qismini o'zgartirmay tur, ochiq qoladi!)
+@dp.message(Command("newsession"))
+async def newsession_start(message: Message, state: FSMContext):
+    await message.answer("📌 Session nomini kiriting:")
+    await state.set_state(AddSession.waiting_for_name)
+
+@dp.message(AddSession.waiting_for_name)
+async def newsession_get_name(message: Message, state: FSMContext):
+    session_name = message.text.strip()
+    if not session_name:
+        return await message.answer("❗ Nom bo'sh bo'lmasligi kerak. Qaytadan kiriting.")
+    await state.update_data(name=session_name)
+    await message.answer("📞 Telefon raqamingizni kiriting (masalan, +9989xxxxxxxx):")
+    await state.set_state(AddSession.waiting_for_phone)
+
+@dp.message(AddSession.waiting_for_phone)
+async def newsession_get_phone(message: Message, state: FSMContext):
+    phone = message.text.strip()
+    data = await state.get_data()
+    session_name = data["name"]
+
+    session_file = os.path.join(SESSIONS_DIR, f"{session_name}.session")
+    client = TelegramClient(session_file, TELETHON_API_ID, TELETHON_API_HASH)
+    await client.connect()
+
+    try:
+        await client.send_code_request(phone)
+        await state.update_data(phone=phone)
+        await state.update_data(client=client)
+        await message.answer("✉️ SMS kodini kiriting:")
+        await state.set_state(AddSession.waiting_for_code)
+    except Exception as e:
+        await client.disconnect()
+        await message.answer(f"❌ Xato: {e}")
+        await state.clear()
+
+@dp.message(AddSession.waiting_for_code)
+async def newsession_get_code(message: Message, state: FSMContext):
+    code = message.text.strip()
+    data = await state.get_data()
+    session_name = data["name"]
+    phone = data["phone"]
+    client: TelegramClient = data["client"]
+
+    try:
+        await client.sign_in(phone, code)
+    except SessionPasswordNeededError:
+        await message.answer("🔑 2FA parolingizni kiriting:")
+        await state.set_state(AddSession.waiting_for_password)
+        return
+    except Exception as e:
+        await client.disconnect()
+        await message.answer(f"❌ Xato: {e}")
+        await state.clear()
+        return
+
+    await client.disconnect()
+    add_session(session_name, {
+        "phone_number": phone,
+        "group_name": "",
+        "index": 1,
+        "admin_user": "",
+        "delay": 60,
+        "status": "stopped",
+        "owner_id": message.from_user.id
+    })
+    await message.answer(f"✅ Session '{session_name}' muvaffaqiyatli qo'shildi!")
+    await state.clear()
+
+@dp.message(AddSession.waiting_for_password)
+async def newsession_get_password(message: Message, state: FSMContext):
+    password = message.text.strip()
+    data = await state.get_data()
+    session_name = data["name"]
+    phone = data["phone"]
+    client: TelegramClient = data["client"]
+
+    try:
+        await client.sign_in(password=password)
+    except Exception as e:
+        await client.disconnect()
+        await message.answer(f"❌ Xato: {e}")
+        await state.clear()
+        return
+
+    await client.disconnect()
+    add_session(session_name, {
+        "phone_number": phone,
+        "group_name": "",
+        "index": 1,
+        "admin_user": "",
+        "delay": 60,
+        "status": "stopped",
+        "owner_id": message.from_user.id
+    })
+    await message.answer(f"✅ Session '{session_name}' muvaffaqiyatli qo'shildi!")
+    await state.clear()
+
 
 # ======== STARTUP ========
 async def main():
