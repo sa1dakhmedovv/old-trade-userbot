@@ -18,7 +18,7 @@ from telethon.tl.functions.messages import ExportChatInviteRequest
 from telethon.tl.types import ChatAdminRights
 
 # === CONFIG ===
-BOT_TOKEN = '8195096775:AAEsEFoYpltqo1KrMXORzYfC-4BeIMTMh-4'
+BOT_TOKEN = '8008249494:AAF3BM3RVpMbm-whf0Vvc8lwGyrKd8z1DTA'
 TELETHON_API_ID = 28369489
 TELETHON_API_HASH = '369653d4ba4277f81d109368af59f82f'
 ADMIN_ID = 5802051984
