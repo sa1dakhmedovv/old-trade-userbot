@@ -350,7 +350,31 @@ async def process_code(message: Message, state: FSMContext):
     await client.connect()
     try:
         await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
-        ...
+        await client.disconnect()
+        add_session(name, {
+            'phone_number': phone,
+            'group_name': '',
+            'admin_user': '',
+            'index': 1,
+            'delay': 60,
+            'status': 'stopped',
+            'owner_id': message.from_user.id,
+            'floodwait_remaining': 0
+        })
+        await message.answer(f"✅ Session '{name}' muvaffaqiyatli yaratildi!")
+        await state.clear()
+
+    except SessionPasswordNeededError:
+        await client.disconnect()
+        await state.update_data(code=code)
+        await message.answer("🔐 2FA parol kerak. Iltimos, kiriting:")
+        await state.set_state(AddSession.waiting_for_password)
+    except Exception as e:
+        await client.disconnect()
+        await message.answer(f"❌ Kod xato yoki boshqa xato:\n{e}")
+        await state.clear()
+
+
 
 
 @dp.message(AddSession.waiting_for_password)
