@@ -24,7 +24,7 @@ TELETHON_API_HASH = '369653d4ba4277f81d109368af59f82f'
 ADMIN_ID = 7753090895
 
 SESSIONS_DIR = 'sessions'
-DATA_FILE = 'data1.json'
+DATA_FILE = 'data.json'
 LOG_FILE = 'guruhlar.txt'
 
 os.makedirs(SESSIONS_DIR, exist_ok=True)
@@ -339,12 +339,6 @@ async def process_code(message: Message, state: FSMContext):
     name = data['name']
     phone = data['phone']
     phone_code_hash = data.get('phone_code_hash')
-
-    if not phone_code_hash:
-        await message.answer("❗ phone_code_hash yo'qolib qolgan. /newsession bilan qayta boshlang.")
-        await state.clear()
-        return
-
     session_file = os.path.join(SESSIONS_DIR, f"{name}.session")
     client = TelegramClient(session_file, TELETHON_API_ID, TELETHON_API_HASH)
     await client.connect()
@@ -363,7 +357,6 @@ async def process_code(message: Message, state: FSMContext):
         })
         await message.answer(f"✅ Session '{name}' muvaffaqiyatli yaratildi!")
         await state.clear()
-
     except SessionPasswordNeededError:
         await client.disconnect()
         await state.update_data(code=code)
@@ -373,9 +366,6 @@ async def process_code(message: Message, state: FSMContext):
         await client.disconnect()
         await message.answer(f"❌ Kod xato yoki boshqa xato:\n{e}")
         await state.clear()
-
-
-
 
 @dp.message(AddSession.waiting_for_password)
 async def process_password(message: Message, state: FSMContext):
